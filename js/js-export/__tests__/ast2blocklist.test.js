@@ -40,6 +40,26 @@ describe("AST2BlockList Class", () => {
         jest.clearAllMocks();
     });
 
+    // Every getter the exporter writes (JSInterface._getterNameLookup, block => mouse.X) has to
+    // import back to the block it came from.
+    test.each(
+        Object.entries(require("../interface")._getterNameLookup).map(([block, getter]) => [
+            getter,
+            block
+        ])
+    )("should import mouse.%s back to the %s block", (getterName, blockName) => {
+        const code = `
+            new Mouse(async mouse => {
+                await mouse.print(mouse.${getterName});
+                return mouse.ENDMOUSE;
+            });
+            MusicBlocks.run();`;
+
+        const AST = acorn.parse(code, { ecmaVersion: 2020 });
+        const blockList = AST2BlockList.toBlockList(AST, config);
+        expect(blockList[2][1]).toBe(blockName);
+    });
+
     // Test calling unsupported function should throw an error.
     test("should throw error for unsupported call", () => {
         const code = `
@@ -1293,7 +1313,7 @@ describe("AST2BlockList Class", () => {
             [28, "beatvalue", 0, 0, [27]],
             [29, ["text", { value: "action" }], 0, 0, [27]],
             [30, "onbeatdo", 0, 0, [27, 31, 32, 33]],
-            [31, "nopValueBlock", 0, 0, [30]],
+            [31, "measurevalue", 0, 0, [30]],
             [32, ["text", { value: "action" }], 0, 0, [30]],
             [33, "onbeatdo", 0, 0, [30, 34, 35, 36]],
             [34, "bpmfactor", 0, 0, [33]],
