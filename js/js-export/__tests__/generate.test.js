@@ -456,6 +456,35 @@ describe("JSGenerate Class", () => {
         expect(tree[1][3][0][1][0]).toBe("box_box1");
     });
 
+    test("should export the palette's arg block as the argument it reads", () => {
+        globalActivity.blocks.stackList = [1];
+        globalActivity.blocks.blockList = {
+            1: {
+                name: "start",
+                trash: false,
+                connections: [null, 2, null],
+                protoblock: { style: "hat" }
+            },
+            2: {
+                name: "forward",
+                connections: [1, 3, null],
+                protoblock: { style: "command", args: 1 }
+            },
+            // Loaded from ["namedarg", { value: "2" }]: the index goes to privateData.
+            3: {
+                name: "namedarg",
+                privateData: "2",
+                value: null,
+                connections: [2],
+                protoblock: { style: "value" }
+            }
+        };
+
+        JSGenerate.generateStacksTree();
+
+        expect(JSGenerate.startTrees[0]).toEqual([["forward", [["arg", [2]]], null]]);
+    });
+
     test("should warn when clamp block flows left", () => {
         globalActivity.blocks.stackList = [1];
         globalActivity.blocks.blockList = {

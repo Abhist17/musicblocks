@@ -143,6 +143,10 @@ class JSGenerate {
                         } else {
                             if (arg.name === "namedbox") {
                                 args.push("box_" + arg.privateData);
+                            } else if (arg.name === "namedarg") {
+                                // The palette's "arg 1" keeps its index in privateData (its
+                                // value is null), so export it the way the "arg" block exports.
+                                args.push(["arg", [Number(arg.privateData)]]);
                             } else {
                                 args.push(arg.value);
                             }
