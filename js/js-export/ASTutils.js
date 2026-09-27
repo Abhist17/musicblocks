@@ -799,18 +799,37 @@ class ASTUtils {
     }
 
     /**
+     * Adds a line comment naming blocks the export left out, written above the statement.
+     *
+     * @static
+     * @param {Object} AST - statement Abstract Syntax Tree to carry the comment
+     * @param {[String]} blockNames - names of the blocks that were left out
+     * @returns {void}
+     */
+    static _noteSkippedBlocks(AST, blockNames) {
+        const names = [...new Set(blockNames)].map(name => `"${name}"`).join(", ");
+        AST.comments = AST.comments || [];
+        AST.comments.push({
+            type: "Line",
+            value: ` Not exported (no JavaScript equivalent): ${names}`
+        });
+    }
+
+    /**
      * Returns list of Abstract Syntax Trees corresponding to each flow statement.
      *
      * @static
      * @param {[*]} flows - tree of flow statements
      * @param {Number} iterMax - highest iterator number in block
      * @returns {[Object]} list of Abstract Syntax Trees
-     * @throws {String} INVALID BLOCK Error
      */
     static _getBlockAST(flows, iterMax) {
         if (flows === undefined || flows === null) return [];
 
         const ASTs = [];
+        // blocks skipped since the last statement, and how many statements had been built
+        let skipped = [];
+        let noted = 0;
         for (const flow of flows) {
             if (flow[0] === "comment") {
                 // Comment blocks have no effect in JS output.
@@ -955,9 +974,27 @@ class ASTUtils {
                         ASTs.push(ASTUtils._getMethodCallAST(...flow));
                     }
                 } else {
-                    throw `CANNOT PROCESS "${flow[0]}" BLOCK`;
+                    // One block with no JavaScript equivalent used to throw here and
+                    // blank the whole export. Leave a note in its place instead, and
+                    // keep the blocks a clamp wraps, since they still run.
+                    console.warn(`CANNOT PROCESS "${flow[0]}" BLOCK`);
+                    skipped.push(flow[0]);
+                    for (const inner of flow.slice(2)) {
+                        ASTs.push(...ASTUtils._getBlockAST(inner, iterMax));
+                    }
                 }
             }
+
+            if (skipped.length > 0 && ASTs.length > noted) {
+                ASTUtils._noteSkippedBlocks(ASTs[noted], skipped);
+                skipped = [];
+            }
+            noted = ASTs.length;
+        }
+
+        // Nothing came after the skipped blocks: note them on the last statement.
+        if (skipped.length > 0 && ASTs.length > 0) {
+            ASTUtils._noteSkippedBlocks(last(ASTs), skipped);
         }
 
         return ASTs;

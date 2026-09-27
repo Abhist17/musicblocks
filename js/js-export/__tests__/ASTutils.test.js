@@ -979,4 +979,86 @@ describe("ASTUtils", () => {
             });
         });
     });
+
+    describe("_getBlockAST with blocks that have no JavaScript equivalent", () => {
+        const serialize = ASTs =>
+            astring.generate({ type: "Program", body: ASTs }, { indent: "    ", comments: true });
+
+        beforeEach(() => {
+            JSInterface.isSetter.mockReturnValue(false);
+            JSInterface.isClampBlock.mockReturnValue(false);
+            JSInterface.isMethod.mockImplementation(name => name === "print");
+            JSInterface.getMethodName.mockImplementation(name => name);
+            jest.spyOn(console, "warn").mockImplementation(() => {});
+        });
+
+        afterEach(() => {
+            console.warn.mockRestore();
+            JSInterface.isMethod.mockReset();
+        });
+
+        it("keeps the statements around the block and notes it above the next one", () => {
+            const code = serialize(
+                ASTUtils._getBlockAST(
+                    [
+                        ["print", [1], null],
+                        ["setturtlename2", ["bob"], null],
+                        ["print", [2], null]
+                    ],
+                    0
+                )
+            );
+            expect(code).toBe(
+                "await mouse.print(1);\n" +
+                    '// Not exported (no JavaScript equivalent): "setturtlename2"\n' +
+                    "await mouse.print(2);\n"
+            );
+            expect(console.warn).toHaveBeenCalledWith('CANNOT PROCESS "setturtlename2" BLOCK');
+        });
+
+        it("still exports the blocks inside an unsupported clamp", () => {
+            const code = serialize(
+                ASTUtils._getBlockAST(
+                    [
+                        [
+                            "duplicatenotes",
+                            [2],
+                            [
+                                ["print", [1], null],
+                                ["print", [2], null]
+                            ]
+                        ]
+                    ],
+                    0
+                )
+            );
+            expect(code).toBe(
+                '// Not exported (no JavaScript equivalent): "duplicatenotes"\n' +
+                    "await mouse.print(1);\n" +
+                    "await mouse.print(2);\n"
+            );
+        });
+
+        it("notes blocks at the end of a flow on the last statement", () => {
+            const code = serialize(
+                ASTUtils._getBlockAST(
+                    [
+                        ["print", [1], null],
+                        ["scaledegree", [5], null],
+                        ["scaledegree", [3], null],
+                        ["show", [1, "x"], null]
+                    ],
+                    0
+                )
+            );
+            expect(code).toBe(
+                '// Not exported (no JavaScript equivalent): "scaledegree", "show"\n' +
+                    "await mouse.print(1);\n"
+            );
+        });
+
+        it("returns no statements when the flow only has unsupported blocks", () => {
+            expect(ASTUtils._getBlockAST([["show", [1, "x"], null]], 0)).toEqual([]);
+        });
+    });
 });
