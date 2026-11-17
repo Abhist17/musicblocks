@@ -79,7 +79,7 @@
         "http-server": "^14.1.1",
         "i18next": "^25.8.18",
         "i18next-http-backend": "4.0.4",
-        "jquery": "3.7.1",
+        "jquery": "4.0.0",
         "jquery-ui": "1.14.2",
         "materialize-css": "0.100.2",
         "postcss": "8.5.28",
